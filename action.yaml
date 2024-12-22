@@ -4,17 +4,23 @@ inputs:
   distro:
     description: "ROS distro to check against"
     required: false
-    default: noetic
 runs:
   using: "composite"
   steps:
     - shell: bash
       run: |
-        sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
-        sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+        . /etc/os-release
+        if [ $VERSION_ID > "20.04" ] ; then
+            sudo curl -sSL https://ros.packages.techfak.net/gpg.key -o /etc/apt/keyrings/ros-one-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/ros-one-keyring.gpg] https://ros.packages.techfak.net $VERSION_CODENAME main" | sudo tee /etc/apt/sources.list.d/ros1.list
+            export ROS_DISTRO=${{ inputs.distro || 'one' }}
+        else
+            sudo apt-key adv --keyserver 'hkp://keyserver.ubuntu.com:80' --recv-key C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
+            echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/ros1.list
+            export ROS_DISTRO=${{ inputs.distro || 'noetic' }}
+        fi
         sudo apt-get -q update
         sudo apt-get -q install python3-rosdep
         sudo rosdep init
         rosdep update
         sudo apt-get -q install catkin-lint
-        export ROS_DISTRO=${{ inputs.distro }}
